@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+/bot
+/bot.exe
+*.test
+coverage.out
+*.log
