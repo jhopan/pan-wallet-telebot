@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -58,15 +59,31 @@ type telegramClient struct {
 }
 
 type update struct {
-	UpdateID int64 `json:"update_id"`
-	Message  *struct {
-		Text string `json:"text"`
+	UpdateID      int64            `json:"update_id"`
+	Message       *incomingMessage `json:"message"`
+	CallbackQuery *callbackQuery   `json:"callback_query"`
+}
+
+type incomingMessage struct {
+	Text string `json:"text"`
+	Chat struct {
+		ID int64 `json:"id"`
+	} `json:"chat"`
+	From struct {
+		ID int64 `json:"id"`
+	} `json:"from"`
+}
+
+type callbackQuery struct {
+	ID   string `json:"id"`
+	Data string `json:"data"`
+	From struct {
+		ID int64 `json:"id"`
+	} `json:"from"`
+	Message struct {
 		Chat struct {
 			ID int64 `json:"id"`
 		} `json:"chat"`
-		From struct {
-			ID int64 `json:"id"`
-		} `json:"from"`
 	} `json:"message"`
 }
 
@@ -87,20 +104,41 @@ func (client *telegramClient) poll(ctx context.Context, handler *bot.Handler) er
 		}
 		for _, item := range updates {
 			client.offset = item.UpdateID + 1
-			if item.Message == nil || item.Message.Text == "" {
-				continue
-			}
-			chatID := item.Message.Chat.ID
-			telegramID := strconv.FormatInt(item.Message.From.ID, 10)
+			client.dispatch(ctx, handler, item)
+		}
+	}
+}
 
-			reply := handler.Handle(ctx, chatID, telegramID, item.Message.Text)
-			if reply.Text == "" {
-				continue
-			}
-			if err := client.sendMessage(ctx, chatID, reply.Text); err != nil {
+// dispatch menangani pesan teks maupun tekan tombol.
+func (client *telegramClient) dispatch(ctx context.Context, handler *bot.Handler, item update) {
+	if item.CallbackQuery != nil {
+		query := item.CallbackQuery
+		chatID := query.Message.Chat.ID
+		telegramID := strconv.FormatInt(query.From.ID, 10)
+
+		reply := handler.HandleCallback(ctx, chatID, telegramID, query.Data)
+		// Telegram wajib dijawab agar spinner tombol berhenti.
+		_ = client.answerCallback(ctx, query.ID)
+		if reply.Text != "" {
+			if err := client.sendMessage(ctx, chatID, reply.Text, reply.Keyboard); err != nil {
 				log.Printf("kirim pesan gagal: %v", err)
 			}
 		}
+		return
+	}
+
+	if item.Message == nil || item.Message.Text == "" {
+		return
+	}
+	chatID := item.Message.Chat.ID
+	telegramID := strconv.FormatInt(item.Message.From.ID, 10)
+
+	reply := handler.Handle(ctx, chatID, telegramID, item.Message.Text)
+	if reply.Text == "" {
+		return
+	}
+	if err := client.sendMessage(ctx, chatID, reply.Text, reply.Keyboard); err != nil {
+		log.Printf("kirim pesan gagal: %v", err)
 	}
 }
 
@@ -130,18 +168,24 @@ func (client *telegramClient) getUpdates(ctx context.Context) ([]update, error) 
 	return payload.Result, nil
 }
 
-func (client *telegramClient) sendMessage(ctx context.Context, chatID int64, text string) error {
+func (client *telegramClient) sendMessage(ctx context.Context, chatID int64, text string, keyboard *bot.Keyboard) error {
 	form := url.Values{}
 	form.Set("chat_id", strconv.FormatInt(chatID, 10))
 	form.Set("text", text)
 	form.Set("disable_web_page_preview", "true")
 
+	if keyboard != nil && len(keyboard.Rows) > 0 {
+		if encoded, err := encodeKeyboard(keyboard); err == nil {
+			form.Set("reply_markup", encoded)
+		}
+	}
+
 	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", client.token)
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
-	request.URL.RawQuery = form.Encode()
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	response, err := client.http.Do(request)
 	if err != nil {
@@ -152,4 +196,42 @@ func (client *telegramClient) sendMessage(ctx context.Context, chatID int64, tex
 		return fmt.Errorf("sendMessage HTTP %d", response.StatusCode)
 	}
 	return nil
+}
+
+// answerCallback menutup spinner pada tombol yang ditekan.
+func (client *telegramClient) answerCallback(ctx context.Context, callbackID string) error {
+	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/answerCallbackQuery", client.token)
+	form := url.Values{}
+	form.Set("callback_query_id", callbackID)
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response, err := client.http.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	return nil
+}
+
+// encodeKeyboard mengubah Keyboard menjadi JSON inline_keyboard Telegram.
+func encodeKeyboard(keyboard *bot.Keyboard) (string, error) {
+	type button struct {
+		Text         string `json:"text"`
+		CallbackData string `json:"callback_data,omitempty"`
+		URL          string `json:"url,omitempty"`
+	}
+	var rows [][]button
+	for _, row := range keyboard.Rows {
+		var encoded []button
+		for _, item := range row {
+			encoded = append(encoded, button{Text: item.Text, CallbackData: item.Callback, URL: item.URL})
+		}
+		rows = append(rows, encoded)
+	}
+	payload, err := json.Marshal(map[string]any{"inline_keyboard": rows})
+	return string(payload), err
 }

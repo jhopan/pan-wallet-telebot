@@ -47,8 +47,8 @@ func TestStartWelcomesNewCustomer(t *testing.T) {
 	if !contains(reply.Text, "JKCUX8CK") {
 		t.Fatalf("sapaan tidak memuat ID: %s", reply.Text)
 	}
-	if !contains(reply.Text, "dibuat") {
-		t.Fatalf("harus menyebut akun dibuat: %s", reply.Text)
+	if !contains(reply.Text, "Bot Saldo") {
+		t.Fatalf("harus menyebut Bot Saldo: %s", reply.Text)
 	}
 }
 
