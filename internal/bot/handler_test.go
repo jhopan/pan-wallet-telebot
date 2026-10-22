@@ -67,9 +67,9 @@ func TestTopupValidatesAmount(t *testing.T) {
 	api := &fakeAPI{resolved: Wallet{PublicID: "ABC12345"}, topup: Topup{Total: 50001, PayURL: "https://pay/abc"}}
 	handler := newHandler(api)
 
-	reply := handler.Handle(context.Background(), 1, "123456789", "/topup 500")
+	reply := handler.Handle(context.Background(), 1, "123456789", "/topup 10000")
 	if contains(reply.Text, "https://pay/abc") {
-		t.Fatal("nominal di bawah 1000 tidak boleh membuat invoice")
+		t.Fatal("nominal di bawah 25.000 tidak boleh membuat invoice")
 	}
 	if api.lastTopup != 0 {
 		t.Fatalf("API tidak boleh dipanggil, dapat %d", api.lastTopup)

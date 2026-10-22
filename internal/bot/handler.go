@@ -93,9 +93,9 @@ func (handler *Handler) Handle(ctx context.Context, chatID int64, telegramID, te
 			return Reply{Text: "Pilih nominal top-up:", Keyboard: &keyboard}
 		}
 		amount, err := strconv.ParseInt(trimmed, 10, 64)
-		if err != nil || amount < 1000 {
+		if err != nil || amount < MinTopup {
 			keyboard := TopupKeyboard()
-			return Reply{Text: "Nominal minimal Rp 1.000.\n\nPilih nominal top-up:", Keyboard: &keyboard}
+			return Reply{Text: "Nominal minimal Rp 25.000.\n\nPilih nominal top-up:", Keyboard: &keyboard}
 		}
 		return handler.createTopup(ctx, chatID, telegramID, amount)
 

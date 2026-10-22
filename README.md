@@ -20,13 +20,19 @@ Bot Xray        -> jual lisensi.      Cek saldo, tapi TIDAK top-up.
 Bot Pan-Wallet  -> registrasi + top-up. HANYA di sini top-up bisa.
 ```
 
+## Ketentuan saldo
+
+- **Minimal top-up Rp 25.000.**
+- **Saldo tidak dapat diuangkan** atau ditarik tunai. Saldo hanya bisa dipakai
+  untuk transaksi di layanan Jhopan (pulsa, paket data, lisensi, dan produk lain).
+
 ## Perintah
 
 | Perintah | Fungsi |
 |---|---|
 | `/start` | daftar otomatis, dapat ID pelanggan |
 | `/saldo` | lihat saldo |
-| `/topup` | tampilkan tombol nominal (10rb / 25rb / 50rb / 100rb) |
+| `/topup` | tampilkan tombol nominal (25rb / 50rb / 100rb / 200rb) |
 | `/topup 50000` | langsung buat invoice nominal tertentu |
 | `/ikat 482913` | hubungkan email/WhatsApp ke akun ini |
 | `/bantuan` | daftar perintah + arahkan ke bot toko |

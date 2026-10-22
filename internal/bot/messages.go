@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+// MinTopup adalah nominal top-up terendah yang diterima Pan-Wallet.
+const MinTopup int64 = 25_000
+
+// DisclaimerSaldo menjelaskan saldo tidak bisa diuangkan.
+const DisclaimerSaldo = "Saldo hanya bisa dipakai untuk transaksi di layanan kami. Saldo tidak dapat diuangkan atau ditarik tunai."
+
 // Button adalah satu tombol inline Telegram.
 type Button struct {
 	Text     string
@@ -22,12 +28,12 @@ type Keyboard struct {
 func TopupKeyboard() Keyboard {
 	return Keyboard{Rows: [][]Button{
 		{
-			{Text: "Rp 10.000", Callback: "topup:10000"},
 			{Text: "Rp 25.000", Callback: "topup:25000"},
+			{Text: "Rp 50.000", Callback: "topup:50000"},
 		},
 		{
-			{Text: "Rp 50.000", Callback: "topup:50000"},
 			{Text: "Rp 100.000", Callback: "topup:100000"},
+			{Text: "Rp 200.000", Callback: "topup:200000"},
 		},
 	}}
 }
@@ -49,7 +55,7 @@ func ParseCallbackAmount(data string) (int64, bool) {
 	}
 	raw := strings.TrimPrefix(data, "topup:")
 	amount, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil || amount < 1000 {
+	if err != nil || amount < MinTopup {
 		return 0, false
 	}
 	return amount, true
@@ -100,8 +106,10 @@ func FormatRupiah(amount int64) string {
 func BalanceMessage(publicID string, balance, held, available int64) string {
 	return fmt.Sprintf(
 		"Saldo kamu\n\nID Pelanggan: %s\n\n"+
-			"Tersedia: Rp %s\nTertahan: Rp %s\nTotal: Rp %s",
+			"Tersedia: Rp %s\nTertahan: Rp %s\nTotal: Rp %s\n\n"+
+			"%s",
 		publicID, FormatRupiah(available), FormatRupiah(held), FormatRupiah(balance),
+		DisclaimerSaldo,
 	)
 }
 
@@ -130,7 +138,7 @@ func HelpMessageWithStore(storeBot string) string {
 		"Bot ini khusus mengurus saldo. Tidak menjual produk.\n\n" +
 		"Perintah:\n" +
 		"/saldo - lihat saldo kamu\n" +
-		"/topup - isi saldo (pilih nominal lewat tombol)\n" +
+		"/topup - isi saldo, minimal Rp 25.000\n" +
 		"/ikat <kode> - hubungkan email atau WhatsApp ke akun ini\n" +
 		"/bantuan - tampilkan pesan ini"
 
@@ -154,8 +162,10 @@ func WelcomeMessage(publicID string, isNew bool) string {
 				"• cek saldo\n\n"+
 				"ID Pelanggan kamu: %s\n"+
 				"Saldo: Rp 0\n\n"+
+				"Minimal top-up Rp 25.000.\n"+
+				"%s\n\n"+
 				"Tekan Top Up untuk mulai mengisi saldo.",
-			publicID,
+			publicID, DisclaimerSaldo,
 		)
 	}
 	return fmt.Sprintf(

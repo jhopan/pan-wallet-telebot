@@ -53,7 +53,7 @@ func TestTopupKeyboardHasNominalButtons(t *testing.T) {
 	for _, label := range labels {
 		joined += label + " "
 	}
-	for _, want := range []string{"10.000", "25.000", "50.000", "100.000"} {
+	for _, want := range []string{"25.000", "50.000", "100.000", "200.000"} {
 		if !contains(joined, want) {
 			t.Errorf("tombol tidak memuat %q: %s", want, joined)
 		}
