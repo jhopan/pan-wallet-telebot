@@ -1,5 +1,8 @@
 # Pan-Wallet Telegram Bot
 
+
+> Bot ini adalah **klien** dari [Pan-Wallet](https://github.com/jhopan/Pan-Wallet) — pusat saldo. Bot tidak menyimpan saldo.
+
 Bot Telegram **khusus saldo** untuk Pan-Wallet. Bot ini **klien**: semua saldo
 disimpan di service Pan-Wallet, bot hanya menampilkan dan meneruskan perintah.
 
